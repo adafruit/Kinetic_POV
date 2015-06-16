@@ -22,14 +22,13 @@ avgC  =  60.0  #  60 +  60 + 20 = 140 mA = ~0.9C average
 bR    = 1.0  # Adjust color
 bG    = 1.0  # balance for
 bB    = 1.0  # whiter whites!
-gamma = 2.6  # For more linear-ish perceived brightness
+gamma = 2.7  # For more linear-ish perceived brightness
 
-# Current estimates are averages measured from strip on fresh LiPoly
-# TO DO: like, actually take these actual measurements :/
-mA0   =  1.0      # LED current when off (driver logic still needs some)
-mAR   = 16.0 * bR # + current for 100% red
-mAG   = 16.0 * bG # + current for 100% green
-mAB   = 16.0 * bB # + current for 100% blue
+# Current estimates are averages measured from strip on LiPoly cell
+mA0   =  1.17      # LED current when off (driver logic still needs some)
+mAR   = 11.24 * bR # + current for 100% red
+mAG   =  6.22 * bG # + current for 100% green
+mAB   =  5.74 * bB # + current for 100% blue
 
 # --------------------------------------------------------------------------
 
