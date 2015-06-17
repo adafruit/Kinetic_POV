@@ -6,7 +6,7 @@
 #
 # Ideal image dimensions are determined by hardware setup, e.g. LED poi
 # project uses 16 LEDs, so image height should match.  Width is limited
-# by AVR PROGMEM capacity; ~2.7K on Trinket allows ~340 columns max.
+# by AVR PROGMEM capacity; ~2.6K on Trinket allows ~320 columns max.
 
 from PIL import Image
 import sys
@@ -16,19 +16,19 @@ import sys
 # so average current should be kept at or below 1C rate (150 mA), though
 # brief surges are OK.  Project uses two LED strips in parallel, so actual
 # current is 2X these numbers, plus some overhead (~20 mA) for the MCU.
-peakC = 180.0  # 180 + 180 + 20 = 380 mA = ~2.5C peak
-avgC  =  60.0  #  60 +  60 + 20 = 140 mA = ~0.9C average
+peakC = 180.0     # 180 + 180 + 20 = 380 mA = ~2.5C peak
+avgC  =  60.0     #  60 +  60 + 20 = 140 mA = ~0.9C average
 
-bR    = 1.0  # Adjust color
-bG    = 1.0  # balance for
-bB    = 1.0  # whiter whites!
-gamma = 2.7  # For more linear-ish perceived brightness
+bR    = 1.0       # Can adjust
+bG    = 1.0       # color balance
+bB    = 1.0       # for whiter whites!
+gamma = 2.7       # For more linear-ish perceived brightness
 
 # Current estimates are averages measured from strip on LiPoly cell
-mA0   =  1.17      # LED current when off (driver logic still needs some)
-mAR   = 11.24 * bR # + current for 100% red
-mAG   =  6.22 * bG # + current for 100% green
-mAB   =  5.74 * bB # + current for 100% blue
+mA0   =  1.3      # LED current when off (driver logic still needs some)
+mAR   = 15.2 * bR # + current for 100% red
+mAG   =  8.7 * bG # + current for 100% green
+mAB   =  8.0 * bB # + current for 100% blue
 
 # --------------------------------------------------------------------------
 

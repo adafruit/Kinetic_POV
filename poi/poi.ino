@@ -27,8 +27,8 @@
 #include "graphics.h" // Graphics data is contained in this header file.
 // It's generated using the 'convert.py' Python script from a 16-color,
 // 16-pixel-high GIF image.  Limiting to 16 colors allows a decent-sized
-// POV message: at 8 bytes (16 pixels @ 4 bits) per line, with about 2.7K
-// available on the Trinket, that's nearly 340 lines max.  The 16-color
+// POV message: at 8 bytes (16 pixels @ 4 bits) per line, with about 2.6K
+// available on the Trinket, that's nearly 320 lines max.  The 16-color
 // palette CAN be changed while running to provide more colors, but be
 // mindful of peak & average current draw if you do that!  Power limiting
 // is normally done in convert.py (keeps this code small & fast).
