@@ -44,9 +44,9 @@
 // case just to comment out this line to have the poi run always-on:
 #define MOTION_PIN 2
 
-// Experimental: powering down the DotStar strip should conserve much more
-// power when idle.  Use NPN transistor + 1K resistor.  Very little space,
-// requires creative free-wiring.  Useless without MOTION_PIN also.
+// Experimental: powering down DotStar strip should conserve much more power
+// when idle.  Use PNP transistor (w/1K resistor) as a 'high side' switch.
+// Very little space, requires creative free-wiring.  Needs MOTION_PIN also.
 // #define POWER_PIN 3
 
 #define SLEEP_TIME 2000 // Not-spinning time before sleep, in milliseconds
@@ -62,7 +62,7 @@ void setup() {
 #endif
 #ifdef POWER_PIN
   pinMode(POWER_PIN, OUTPUT);
-  digitalWrite(POWER_PIN, HIGH);     // Power-on LED strip
+  digitalWrite(POWER_PIN, LOW);      // Power-on LED strip
 #endif
   strip.begin();
 
@@ -108,14 +108,14 @@ void loop() {
 void sleep() {
   // Turn off LEDs one of two ways...
 #ifdef POWER_PIN
-  digitalWrite(POWER_PIN, LOW); // Cut power
-#else
-  strip.clear();                // Issue '0' data
+  digitalWrite(POWER_PIN, HIGH);       // Cut power
+#else                                  // or
+  strip.clear();                       // Issue '0' data
   strip.show();
 #endif
 
   // Disable peripherals to maximize battery in sleep state
-  DIDR0 = _BV(AIN1D) | _BV(AIN0D); // Disable digital input buffers
+  DIDR0 = _BV(AIN1D) | _BV(AIN0D);     // Disable digital input buffers
   power_all_disable();
 
   set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Deepest sleep mode
@@ -127,11 +127,11 @@ void sleep() {
 
   // Resumes here on wake
 
-  GIMSK = 0;             // Clear pin change settings so
-  PCMSK = 0;             // interrupt won't fire again.
-  power_timer0_enable(); // Used by millis()
+  GIMSK = 0;                           // Clear pin change settings so
+  PCMSK = 0;                           // interrupt won't fire again.
+  power_timer0_enable();               // Used by millis()
 #ifdef POWER_PIN
-  digitalWrite(POWER_PIN, HIGH); // Power-up LEDs
+  digitalWrite(POWER_PIN, LOW);        // Power-up LEDs
 #endif
 }
 
