@@ -1,12 +1,12 @@
-# Image converter script for POV LED poi project.  Reads 16-color GIF or
-# PNG image as input, generates tables which can be copied-and-pasted or
-# redirected to a .h file, e.g.:
+# Image converter script for POV LED poi project.  Reads one or more images
+# as input, generates tables which can be copied-and-pasted or redirected
+# to a .h file, e.g.:
 #
-# $ python convert.py image.gif > graphics.h
+# $ python convert.py image1.gif image2.png > graphics.h
 #
 # Ideal image dimensions are determined by hardware setup, e.g. LED poi
 # project uses 16 LEDs, so image height should match.  Width is limited
-# by AVR PROGMEM capacity; ~2.6K on Trinket allows ~320 columns max.
+# by AVR PROGMEM capacity -- very limited on Trinket!
 
 from PIL import Image
 import sys
@@ -32,87 +32,228 @@ mAB   =  8.0 * bB # + current for 100% blue
 
 # --------------------------------------------------------------------------
 
-img    = Image.open(sys.argv[1]) # Open image name passed to script
-pixels = img.load()
-# Must be palette mode (GIF or PNG) with 16 colors or fewer:
-assert img.mode == 'P' and len(img.getcolors()) <= 16
+cols     = 0 # Current column number in output
+byteNum  = 0
+numBytes = 0
 
-# Image size not validated - on purpose - in case of quick test with an
-# existing (but non-optimal) file.  If too big or too small for the LED
-# strip, just wastes some PROGMEM space or some LEDs will be lit wrong.
-width  = img.size[0]
-height = img.size[1] & 0xFFFE  # Pixels/line must be multiple of 2
+def writeByte(n):
+	global cols, byteNum, numBytes
 
-# Shenanigans to extract color palette from image:
-lut = img.resize((16, 1)) # Create new 16x1 image using same palette
-lut.putdata(range(16))    # Fill new image pixels with 0-15 (LUT indices)
-lut = list(lut.convert("RGB").getdata()) # pixels->LUT->list
+	cols += 1                      # Increment column #
+	if cols >= 8:                  # If max column exceeded...
+		print                  # end current line
+		sys.stdout.write("  ") # and start new one
+		cols = 0               # Reset counter
+	sys.stdout.write("{0:#0{1}X}".format(n, 4))
+	byteNum += 1
+	if byteNum < numBytes:
+		sys.stdout.write(",")
+		if cols < 7:
+			sys.stdout.write(" ")
 
-# Estimate current for each element of palette:
-paletteCurrent = []
-for i in range(16):
-	paletteCurrent.append(mA0 +
-	     pow((lut[i][0] / 255.0), gamma) * mAR +
-	     pow((lut[i][1] / 255.0), gamma) * mAG +
-	     pow((lut[i][2] / 255.0), gamma) * mAB)
+# --------------------------------------------------------------------------
 
-# Estimate peak and average current for each column of image
-colMaxC = 0.0  # Maximum column current
-colAvgC = 0.0  # Average column current
-for x in range(width): # For each row...
-	mA = 0.0       # Sum current of each pixel's palette entry
-	for y in range(height): mA += paletteCurrent[pixels[x, y]]
-	colAvgC += mA                 # Accumulate average (div later)
-	if mA > colMaxC: colMaxC = mA # Monitor peak
-colAvgC /= width       # Sum div into average
+numLEDs = 0
+images  = []
 
-s1 = peakC / colMaxC   # Scaling factor for peak current constraint
-s2 = avgC  / colAvgC   # Scaling factor for average current constraint
-if s2 < s1:  s1 = s2   # Use smaller of two (so both constraints met),
-if s1 > 1.0: s1 = 1.0  # but never increase brightness
+# Initial pass loads each image & tracks tallest size overall
+
+for name in sys.argv[1:]: # For each image passed to script...
+	image        = Image.open(name)
+	image.pixels = image.load()
+	image.height = image.size[1] # May get byte-padded below
+	try:    image.numColors = len(image.getcolors(256))
+	except: image.numColors = 257
+	images.append(image)
+
+	# 1- and 4-bit images are padded to the next byte boundary.
+	# Image size not fully validated - on purpose - in case of quick
+	# test with an existing (but non-optimal) file.  If too big or too
+	# small for the LED strip, just wastes some PROGMEM space or some
+	# LEDs will be lit wrong, usually no biggie.
+	if image.numColors <= 2:    # 1 bit/pixel, use 8-pixel blocks
+		if image.height & 7: image.height += 8 - (image.height & 7)
+	elif image.numColors <= 16: # 4 bits/pixel, use 2-pixel blocks
+		if image.height & 2: image.height += 1
+
+	if image.height > numLEDs: numLEDs = image.height
 
 print "// Don't edit this file!  It's software-generated."
 print "// See convert.py script instead."
 print
-print '#define NUM_LEDS ' + str(height)
-print '#define LINES    ' + str(width)
+print "#define PALETTE1  0"
+print "#define PALETTE4  1"
+print "#define PALETTE8  2"
+print "#define TRUECOLOR 3"
+print
+print "#define NUM_LEDS %d" % numLEDs
 print
 
-# Output gamma- and brightness-adjusted color palette:
-s1 *= 255.0 # (0.0-1.0) -> (0.0-255.0)
-bR *= s1    # Scale color balance values
-bG *= s1
-bB *= s1
-print 'uint8_t palette[16][3] = {'
-for i in range(16):
-	sys.stdout.write('  { %*s, %*s, %*s }' %
-	  (3, str(int(pow((lut[i][0] / 255.0), gamma) * bR + 0.5)),
-	   3, str(int(pow((lut[i][1] / 255.0), gamma) * bG + 0.5)),
-	   3, str(int(pow((lut[i][2] / 255.0), gamma) * bB + 0.5))))
-	if i < 15: print ','
-print ' };'
-print
+# Second pass estimates current of each column, then peak & overall average
 
-# Pixel values are just used directly (packed 2 per byte):
-sys.stdout.write('const uint8_t PROGMEM pixels[] = {')
-i    = 0  # Current pixel number in input
-cols = 7  # Current column number in output
-for x in range(width):
-	for y in range(0, height, 2):
-		cols += 1                      # Increment column #
-		if cols >= 8:                  # If max column exceeded...
-			print                  # end current line
-			sys.stdout.write('  ') # and start new one
-			cols = 0               # Reset counter
-		p1 = pixels[x, y]              # Even pixel value
-		p2 = pixels[x, y + 1]          # Odd pixel value
-		sys.stdout.write('0x')
-		if p1 < 10: sys.stdout.write(chr(ord('0') + p1))
-		else      : sys.stdout.write(chr(ord('A') + p1 - 10))
-		if p2 < 10: sys.stdout.write(chr(ord('0') + p2))
-		else      : sys.stdout.write(chr(ord('A') + p2 - 10))
-		i += 2
-		if i < (width * height):
-			sys.stdout.write(',')
-			if cols < 7: sys.stdout.write(' ')
-print ' };'
+for imgNum, image in enumerate(images): # For each image in list...
+	if image.numColors <= 256:
+		# Shenanigans to extract color palette from image:
+		lut = image.resize((image.numColors, 1))
+		lut.putdata(range(image.numColors))
+		lut = list(lut.convert("RGB").getdata())
+
+		# Estimate current for each element of palette:
+		paletteCurrent = []
+		for i in range(image.numColors):
+			paletteCurrent.append(mA0 +
+			  pow((lut[i][0] / 255.0), gamma) * mAR +
+			  pow((lut[i][1] / 255.0), gamma) * mAG +
+			  pow((lut[i][2] / 255.0), gamma) * mAB)
+
+	# Estimate peak and average current for each column of image
+	colMaxC = 0.0 # Maximum column current
+	colAvgC = 0.0 # Average column current
+	for x in range(image.size[0]): # For each row...
+		mA = 0.0 # Sum current of each pixel's palette entry
+		for y in range(image.size[1]):
+			if image.numColors <= 256:
+				mA += paletteCurrent[image.pixels[x, y]]
+			else:
+				mA += (mA0 +
+				  pow((image.pixels[x, y][0] / 255.0),
+				  gamma) * mAR +
+				  pow((image.pixels[x, y][1] / 255.0),
+				  gamma) * mAG +
+				  pow((image.pixels[x, y][2] / 255.0),
+				  gamma) * mAB)
+		colAvgC += mA                 # Accumulate average (div later)
+		if mA > colMaxC: colMaxC = mA # Monitor peak
+	colAvgC /= image.size[0] # Sum div into average
+
+	s1 = peakC / colMaxC   # Scaling factor for peak current constraint
+	s2 = avgC  / colAvgC   # Scaling factor for average current constraint
+	if s2 < s1:  s1 = s2   # Use smaller of two (so both constraints met),
+	if s1 > 1.0: s1 = 1.0  # but never increase brightness
+
+	s1 *= 255.0   # (0.0-1.0) -> (0.0-255.0)
+	bR1 = bR * s1 # Scale color balance values
+	bG1 = bG * s1
+	bB1 = bB * s1
+
+	p    = 0 # Current pixel number in image
+
+	cols     = 7 # Forcw wrap on 1st output
+	byteNum  = 0
+
+	if image.numColors <= 256:
+		# Output gamma- and brightness-adjusted color palette:
+		print ("const uint8_t PROGMEM palette%02d[][3] = {" % imgNum)
+		for i in range(image.numColors):
+			sys.stdout.write("  { %3d, %3d, %3d }" % (
+			  int(pow((lut[i][0]/255.0),gamma)*bR1+0.5),
+			  int(pow((lut[i][1]/255.0),gamma)*bG1+0.5),
+			  int(pow((lut[i][2]/255.0),gamma)*bB1+0.5)))
+			if i < (image.numColors - 1): print ","
+		print " };"
+		print
+
+		sys.stdout.write(
+		  "const uint8_t PROGMEM pixels%02d[] = {" % imgNum)
+
+		if image.numColors <= 2:
+			numBytes = image.size[0] * numLEDs / 8
+		elif image.numColors <= 16:
+			numBytes = image.size[0] * numLEDs / 2
+		else:
+			numBytes = image.size[0] * numLEDs
+
+		for x in range(image.size[0]):
+			if image.numColors <= 2:
+				for y in range(0, numLEDs, 8):
+					sum = 0
+					for bit in range(8):
+						y1 = y + bit
+						if y1 < image.size[1]:
+							sum += (
+							  image.pixels[x,
+							  y1] << bit)
+					writeByte(sum)
+			elif image.numColors <= 16:
+				for y in range(0, numLEDs, 2):
+					if y < image.size[1]:
+						p1 = image.pixels[x, y]
+					else:
+						p1 = 0
+					if (y + 1) < image.size[1]:
+						p2 = image.pixels[x, y + 1]
+					else:
+						p2 = 0
+					writeByte(p1 * 16 + p2)
+			else:
+				for y in range(numLEDs):
+					if y < image.size[1]:
+						writeByte(image.pixels[x, y])
+					else:
+						writeByte(0)
+
+	else:
+		# Perform gamma- and brightness-adjustment on pixel data
+		sys.stdout.write(
+		  "const uint8_t PROGMEM pixels%02d[] = {" % imgNum)
+		numBytes = image.size[0] * image.height * 3
+
+		for x in range(image.size[0]):
+			for y in range(numLEDs):
+				if y < image.size[1]:
+					writeByte(int(pow((
+					  image.pixels[x, y][0] / 255.0),
+					  gamma) * bR1 + 0.5))
+					writeByte(int(pow((
+					  image.pixels[x, y][1] / 255.0),
+					  gamma) * bG1 + 0.5))
+					writeByte(int(pow((
+					  image.pixels[x, y][2] / 255.0),
+					  gamma) * bB1 + 0.5))
+				else:
+					writeByte(0)
+					writeByte(0)
+					writeByte(0)
+
+	print " };" # end pixels[] array
+	print
+
+# Last pass, print table of images...
+
+print "typedef struct {"
+print "  uint8_t        type;    // PALETTE[1,4,8] or TRUECOLOR"
+print "  uint16_t       lines;   // Length of image (in scanlines)"
+print "  const uint8_t *palette; // -> PROGMEM color table (NULL if truecolor)"
+print "  const uint8_t *pixels;  // -> Pixel data in PROGMEM"
+print "} image;"
+print
+print "const image PROGMEM images[] = {"
+
+for imgNum, image in enumerate(images): # For each image in list...
+	sys.stdout.write("  { ")
+	if image.numColors <= 2:
+		sys.stdout.write("PALETTE1 , ")
+	elif image.numColors <= 16:
+		sys.stdout.write("PALETTE4 , ")
+	elif image.numColors <= 256:
+		sys.stdout.write("PALETTE8 , ")
+	else:
+		sys.stdout.write("TRUECOLOR, ")
+
+	sys.stdout.write(" %3d, " % image.size[0])
+
+	if image.numColors <= 256:
+		sys.stdout.write("(const uint8_t *)palette%02d, " % imgNum)
+	else:
+		sys.stdout.write("NULL                      , ")
+
+	sys.stdout.write("pixels%02d }" % imgNum)
+
+	if imgNum < len(images) - 1:
+		print(",")
+	else:
+		print
+
+print "};"
+print
+print "#define NUM_IMAGES (sizeof(images) / sizeof(images[0]))"
