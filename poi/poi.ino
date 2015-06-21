@@ -61,14 +61,14 @@
 // Optional: select from multiple images using tactile button (#1489)
 // between pin and ground.  Requires a suitably-built graphics.h file with
 // more than one image.
-#define SELECT_PIN 3
+//#define SELECT_PIN 3
 
 // Experimental: powering down DotStars when idle conserves more battery,
 // but space is very tight and this requires creative free-wiring.  Use a
 // PNP transistor (e.g. 2N2907) (w/220 Ohm resistor to base) as a 'high
 // side' switch to DotStar +V.  DON'T do this NPN/low-side, may damage
 // strip.  MOTION_PIN must also be defined to use this (pointless without).
-#define POWER_PIN 4
+//#define POWER_PIN 4
 
 #define SLEEP_TIME 2000  // Not-spinning time before sleep, in milliseconds
 
@@ -339,6 +339,7 @@ void sleep() {
 #ifdef POWER_PIN
   digitalWrite(POWER_PIN, LOW); // Power-up LEDs
 #endif
+  prev = millis();              // Save wake time
 }
 
 EMPTY_INTERRUPT(PCINT0_vect); // Pin change (does nothing, but required)
