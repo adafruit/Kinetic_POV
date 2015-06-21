@@ -40,10 +40,12 @@
 // be altered in RAM while running to provide additional colors, but be
 // mindful of peak & average current draw if you do that!  Power limiting
 // is normally done in convert.py (keeps this code relatively small & fast).
+// 1/4/8/24 were chosen because the AVR can handle these fairly easily;
+// unpacking data of arbitrary depth would go slower (no >>n instruction).
 
-// Ideally you use hardware SPI (or hardware-assisted on Trinket) as it's
-// much faster, though limited to specific pins.  If you need to bitbang
-// DotStar data & clock on different pins, optionally define those here:
+// Ideally you use hardware SPI as it's much faster, though limited to
+// specific pins.  If you really need to bitbang DotStar data & clock on
+// different pins, optionally define those here:
 #define LED_DATA_PIN  0
 #define LED_CLOCK_PIN 1
 
@@ -51,13 +53,14 @@
 // poor man's accelerometer -- poi lights only when moving, saving some
 // power.  The 'fast' vibration switch is VERY sensitive and will trigger
 // at the slightest bump...while the 'medium' switch requires a certain
-// minimum spin rate which may not trigger if you're doing mellow spins...
-// neither is perfect.  If you'd prefer just to leave out that part and
-// have the poi run always-on, enable this line:
+// minimum spin rate which may not trigger if you're doing mellow spins.
+// Neither is perfect.  If you'd prefer just to leave out that component
+// and have the poi run always-on, comment out this line:
 #define MOTION_PIN 2
 
-// Optional: select from multiple images using tactile button (#1489).
-// Requires a suitably-built graphics.h file with more than one image.
+// Optional: select from multiple images using tactile button (#1489)
+// between pin and ground.  Requires a suitably-built graphics.h file with
+// more than one image.
 #define SELECT_PIN 3
 
 // Experimental: powering down DotStars when idle conserves more battery,
@@ -95,7 +98,8 @@ void setup() {
   strip.clear();                // Make sure strip is clear
   strip.show();                 // before measuring battery
 
-  // Display battery level bargraph on startup
+  // Display battery level bargraph on startup.  It's just a vague estimate
+  // based on cell voltage (drops with discharge) but doesn't handle curve.
   uint16_t mV  = readVoltage();
   uint8_t  lvl = (mV >= BATT_MAX_MV) ? NUM_LEDS : // Full (or nearly)
                  (mV <= BATT_MIN_MV) ?        1 : // Drained
@@ -105,9 +109,9 @@ void setup() {
     uint8_t g = (i * 5 + 2) / NUM_LEDS;           // Red to green
     strip.setPixelColor(i, 4-g, g, 0);
     strip.show();                                 // Animate a bit
-    delay(20);
+    delay(250 / NUM_LEDS);
   }
-  delay(1200);                                    // Hold last state a moment
+  delay(1500);                                    // Hold last state a moment
   strip.clear();                                  // Then clear strip
   strip.show();
 
@@ -144,7 +148,8 @@ void imageInit() { // Initialize global image state for current imageNumber
   imagePixels  = (uint8_t *)pgm_read_word(&images[imageNumber].pixels);
   // 1- and 4-bit images have their color palette loaded into RAM both for
   // faster access and to allow dynamic color changing.  Not done w/8-bit
-  // because that would require inordinate RAM.
+  // because that would require inordinate RAM (328P could handle it, but
+  // I'd rather keep the RAM free for other features in the future).
   if(imageType == PALETTE1)      memcpy_P(palette, imagePalette,  2 * 3);
   else if(imageType == PALETTE4) memcpy_P(palette, imagePalette, 16 * 3);
 }
@@ -249,6 +254,7 @@ void loop() {
 
 #ifdef MOTION_PIN
 void sleep() {
+
   // Turn off LEDs...
   strip.clear();                 // Issue '0' data
   strip.show();
