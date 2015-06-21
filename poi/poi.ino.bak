@@ -1,26 +1,23 @@
 // POV LED poi sketch.  Uses the following Adafruit parts (X2 for two poi):
 //
 // - Trinket 5V or 3V (adafruit.com/product/1501 or 1500) (NOT Pro Trinket)
-// - 150 mAh LiPoly battery (#1317)
-// - LiPoly backpack (#2124)
-// - Fast (#1766) or medium (#2384) vibration sensor switch
+// - 150 mAh LiPoly battery (1317)
+// - LiPoly backpack (2124)
+// - Medium vibration sensor switch (2384)
 //
 // See comments in code re: vibration switch and other optional parts.
+// Needs Adafruit_DotStar library: github.com/adafruit/Adafruit_DotStar
 //
 // Use 'soda bottle preform' for enclosure w/5.25" (133 mm) inside depth.
 // 3D-printable cap and insert can be downloaded from Thingiverse:
 // (add link here)
-// Add leash - e.g. paracord, or fancy ones available from flowtoys.com.
-//
-// Needs Adafruit_DotStar library: github.com/adafruit/Adafruit_DotStar
+// Also needs leash - e.g. paracord, or fancy ones avail from flowtoys.com
 
 #include <Arduino.h>
 #include <Adafruit_DotStar.h>
 #include <avr/power.h>
 #include <avr/sleep.h>
 // #include <SPI.h> // Enable this line on Pro Trinket
-
-// CONFIGURABLE STUFF ------------------------------------------------------
 
 #include "graphics.h" // Graphics data is contained in this header file.
 // It's generated using the 'convert.py' Python script.  Various image
@@ -31,39 +28,26 @@
 // mindful of peak & average current draw if you do that!  Power limiting
 // is normally done in convert.py (keeps this code relatively small & fast).
 
-// Ideally you use hardware SPI (or hardware-assisted on Trinket) as it's
-// much faster, though limited to specific pins.  If you need to bitbang
-// DotStar data & clock on different pins, optionally define those here:
 #define LED_DATA_PIN  0
 #define LED_CLOCK_PIN 1
 
 // The vibration switch (aligned perpendicular to leash) is used as a
-// poor man's accelerometer -- poi lights only when moving, saving some
-// power.  The 'fast' vibration switch is VERY sensitive and will trigger
-// at the slightest bump...while the 'medium' switch requires a certain
-// minimum spin rate which may not trigger if you're doing mellow spins...
-// neither is perfect.  If you'd prefer just to leave out that part and
-// have the poi run always-on, enable this line:
+// poor man's accelerometer -- poi lights only when spinning, saving some
+// power.  This requires a certain minimum spin rate, and if you're doing
+// very mellow spins, it might not be enough.  There's a 'fast' vibration
+// switch you could try, but it's quite twitchy...might be better in this
+// case just to comment out this line to have the poi run always-on:
 #define MOTION_PIN 2
 
-// Optional: select from multiple images using tactile button (#1489).
-// Requires a suitably-built graphics.h file with more than one image.
+// Optional: image select using tactile button.
 #define SELECT_PIN 3
 
-// Experimental: powering down DotStars when idle conserves more battery,
-// but space is very tight and this requires creative free-wiring.  Use a
-// PNP transistor (e.g. 2N2907) (w/220 Ohm resistor to base) as a 'high
-// side' switch to DotStar +V.  DON'T do this NPN/low-side, may damage
-// strip.  MOTION_PIN must also be defined to use this (pointless without).
+// Experimental: powering down DotStar strip should conserve more battery.
+// Use PNP transistor (w/220 Ohm resistor) as a 'high side' switch.  Very
+// little space, requires creative free-wiring.  Must use MOTION_PIN also.
 #define POWER_PIN 4
 
-#define SLEEP_TIME 2000  // Not-spinning time before sleep, in milliseconds
-
-// Empty and full thresholds (millivolts) used for battery level display:
-#define BATT_MIN_MV 3350 // Some headroom over battery cutoff near 2.9V
-#define BATT_MAX_MV 4050 // And little below fresh-charged battery near 4.1V
-
-// -------------------------------------------------------------------------
+#define SLEEP_TIME 2000 // Not-spinning time before sleep, in milliseconds
 
 #if defined(LED_DATA_PIN) && defined(LED_CLOCK_PIN)
 Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS,
@@ -72,6 +56,32 @@ Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS,
 Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS, DOTSTAR_GBR);
 #endif
 
+// -------------------------------------------------------------------------
+
+// USB = 5.091V (while charging)  5.138 (charged)
+// Fresh off charger: 0001 00000 0000 11001 = 4.109V (on around 3:07-ish)
+// Stabilize after ~30 sec: 0000 1111 1110 1101 = 4.077
+// ~1 min: 0000111111001111 = 4.047   (3:08 pm)
+// 3:13: 0000 1111 1010 0100 = 4.004
+// 3:16 0000111110001000 = 3.976
+// 3:50 0000111011000000 = 3.776
+// 4:21 0000111001011101 = 3.677
+// 4:36 3.633
+// 4:42 3.630
+// 5:01 3.583
+// 5:28 3.420
+// 5:32 3.379
+// 5:35 3.349
+// 5:44 3.215
+// 5:52 3.025 (big drop)
+// 5:53 3.008
+// 5:53 2.992
+// 5:56 2.900
+// Flickering now -- locked up?
+
+#define BATT_MAX_MV 4050 // Fresh off charger is 4.1V
+#define BATT_MIN_MV 3350 // Battery cuts out at 2.9V
+
 void setup() {
 #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000L)
   clock_prescale_set(clock_div_1);   // Enable 16 MHz on Trinket
@@ -79,52 +89,67 @@ void setup() {
 
 #ifdef POWER_PIN
   pinMode(POWER_PIN, OUTPUT);
-  digitalWrite(POWER_PIN, LOW); // Power-on LED strip
+  digitalWrite(POWER_PIN, LOW);      // Power-on LED strip
 #endif
-  strip.begin();                // Allocate DotStar buffer, init SPI
-  strip.clear();                // Make sure strip is clear
-  strip.show();                 // before measuring battery
-
-  // Display battery level bargraph on startup
-  uint16_t mV  = readVoltage();
-  uint8_t  lvl = (mV >= BATT_MAX_MV) ? NUM_LEDS : // Full (or nearly)
-                 (mV <= BATT_MIN_MV) ?        1 : // Drained
-                 1 + ((mV - BATT_MIN_MV) * NUM_LEDS + (NUM_LEDS / 2)) /
-                 (BATT_MAX_MV - BATT_MIN_MV + 1); // # LEDs lit (1-NUM_LEDS)
-  for(uint8_t i=0; i<lvl; i++) {                  // Each LED to batt level...
-    uint8_t g = (i * 5 + 2) / NUM_LEDS;           // Red to green
-    strip.setPixelColor(i, 4-g, g, 0);
-    strip.show();                                 // Animate a bit
-    delay(20);
-  }
-  delay(1200);                                    // Hold last state a moment
-  strip.clear();                                  // Then clear strip
+  strip.begin();
+  strip.clear();
   strip.show();
 
-  imageInit(); // Initialize pointers for default image
+#if 1
+for(;;) {
+  uint16_t mV  = readVoltage();
+  uint8_t  lvl =
+    (mV >= BATT_MAX_MV) ? NUM_LEDS : (mV <= BATT_MIN_MV) ? 1 :
+    1 + ((mV - BATT_MIN_MV) * NUM_LEDS + (NUM_LEDS / 2)) /
+    (BATT_MAX_MV - BATT_MIN_MV + 1);
+  for(uint8_t i=0; i<lvl; i++) {
+    uint8_t g = (i * 5 + 2) / NUM_LEDS;
+    strip.setPixelColor(i, 4-g, g, 0);
+  }
+  strip.show();
+}
+#endif
+
+#if 1
+strip.show();
+for(;;) {
+  uint16_t mV = readVoltage();
+  strip.clear();
+  for(uint8_t i=0; i<16; i++) {
+    if(mV & (1 << i)) strip.setPixelColor(i, 10, 0, 0);
+  }
+  strip.show();
+  delay(500);
+}
+#endif
+
+//for(;;);
+//delay(2000);
+
+  imageInit();
 
 #ifdef SELECT_PIN
   pinMode(SELECT_PIN, INPUT_PULLUP);
 #endif
 #ifdef MOTION_PIN
   pinMode(MOTION_PIN, INPUT_PULLUP);
-  sleep();     // Sleep until motion detected
+  sleep();                           // Jump right into sleep mode
 #endif
 }
 
 // GLOBAL STATE STUFF ------------------------------------------------------
 
-uint32_t prev        = 0L; // Used for time measurement
-uint8_t  imageNumber = 0,  // Current image being displayed
-         imageType,        // Image type: PALETTE[1,4,8] or TRUECOLOR
-        *imagePalette,     // -> palette data in PROGMEM
-        *imagePixels,      // -> pixel data in PROGMEM
-         palette[16][3];   // RAM-based color table for 1- or 4-bit images
-uint16_t imageLines,       // Number of lines in active image
-         imageLine;        // Current line number in image
 #ifdef SELECT_PIN
 uint8_t  debounce    = 0;  // Debounce counter for image select pin
 #endif
+uint32_t prev        = 0L; // Used for time measurement
+uint8_t  imageNumber = 0;  // Current image being displayed
+uint8_t  imageType;        // Image type: PALETTE[1,4,8] or TRUECOLOR
+uint8_t *imagePalette;     // -> palette data in PROGMEM
+uint8_t *imagePixels;      // -> pixel data in PROGMEM
+uint16_t imageLines;       // Number of lines in active image
+uint16_t imageLine;        // Current line number in image
+uint8_t  palette[16][3];   // RAM-based color table for 1- or 4-bit images
 
 void imageInit() { // Initialize global image state for current imageNumber
   imageType    = pgm_read_byte(&images[imageNumber].type);
@@ -168,7 +193,7 @@ void loop() {
   }
 #endif
 
-  // Transfer one scanline from pixel data to LED strip:
+  // Transfer one scanline from pixel data to LED strip
 
   switch(imageType) {
 
@@ -228,10 +253,8 @@ void loop() {
     }
   }
 
-  strip.show(); // Refresh LEDs
-#if !defined(LED_DATA_PIN) && !defined(LED_CLOCK_PIN)
-  delay(1);     // Because hardware SPI is ludicrously fast
-#endif
+  strip.show();
+delay(1);
   if(++imageLine >= imageLines) imageLine = 0; // Next scanline, wrap around
 }
 
@@ -247,29 +270,30 @@ void sleep() {
 #if !defined(LED_DATA_PIN) && !defined(LED_CLOCK_PIN)
 #ifdef __AVR_ATtiny85__
   pinMode(1, INPUT);             // Set SPI data & clock to inputs else
-  pinMode(2, INPUT);             // DotStars power parasitically, jerks.
+  pinMode(2, INPUT);             // DotStars try to power parasitically
 #else
   pinMode(11, INPUT);
-  pinMode(13, INPUT);
+  pinMode(23, INPUT);
 #endif // ATtiny
 #endif // Data/clock/pins
 #endif // POWER_PIN
 
-  power_all_disable(); // Peripherals ALL OFF, best sleep-state battery use
+  // Disable peripherals to maximize battery in sleep state
+  power_all_disable();
 
   // Enable pin-change interrupt on motion pin
 #ifdef __AVR_ATtiny85__
-  PCMSK = _BV(MOTION_PIN);  // Pin mask
-  GIMSK = _BV(PCIE);        // Interrupt enable
+  PCMSK = _BV(MOTION_PIN);                   // Pin mask
+  GIMSK = _BV(PCIE);                         // Interrupt enable
 #else
   volatile uint8_t *p = portInputRegister(digitalPinToPort(MOTION_PIN));
-  if(p == &PIND) {          // Pins 0-7 = PCINT16-23
+  if(p == &PIND) {        // Pins 0-7 = PCINT16-23
     PCMSK2 = _BV(MOTION_PIN);
     PCICR  = _BV(PCIE2);
-  } else if(p == &PINB) {   // Pins 8-13 = PCINT0-5
+  } else if(p == &PINB) { // Pins 8-13 = PCINT0-5
     PCMSK0 = _BV(MOTION_PIN- 8);
     PCICR  = _BV(PCIE0);
-  } else if(p == &PINC) {   // Pins 14-20 = PCINT8-14
+  } else if(p == &PINC) { // Pins 14-20 = PCINT8-14
     PCMSK1 = _BV(MOTION_PIN-14);
     PCICR  = _BV(PCIE1);
   }
@@ -279,7 +303,7 @@ void sleep() {
 #ifdef SELECT_PIN
   debounce = 0;
 #ifdef __AVR_ATtiny85__
-  PCMSK |= _BV(SELECT_PIN); // Add'l pin mask
+  PCMSK |= _BV(SELECT_PIN);                  // Add'l pin mask
 #else
   volatile uint8_t *p = portInputRegister(digitalPinToPort(SELECT_PIN));
   if(p == &PIND) {        // Pins 0-7 = PCINT16-23
@@ -295,10 +319,10 @@ void sleep() {
 #endif // ATtiny
 #endif // SELECT_PIN
 
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Deepest sleep mode
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);       // Deepest sleep mode
   sleep_enable();
   interrupts();
-  sleep_mode();                        // Power down
+  sleep_mode();                              // Power down
 
   // Resumes here on wake
 
@@ -308,20 +332,20 @@ void sleep() {
 #else
   PCICR = PCMSK0 = PCMSK1 = PCMSK2 = 0;
 #endif
-  power_timer0_enable();        // Used by millis()
+  power_timer0_enable();                     // Used by millis()
 #if !defined(LED_DATA_PIN) && !defined(LED_CLOCK_PIN)
 #ifdef __AVR_ATtiny85__
-  pinMode(1, OUTPUT);           // Re-enable SPI pins
+  pinMode(1, OUTPUT);                        // Re-enable SPI pins
   pinMode(2, OUTPUT);
-  power_usi_enable();           // Used by DotStar
+  power_usi_enable();                        // Used by DotStar
 #else
-  pinMode(11, OUTPUT);          // Re-enable SPI pins
+  pinMode(11, OUTPUT);                       // Re-enable SPI pins
   pinMode(13, OUTPUT);
-  power_spi_enable();           // Used by DotStar
+  power_spi_enable();                        // Used by DotStar
 #endif // ATtiny
 #endif // Data/clock pins
 #ifdef POWER_PIN
-  digitalWrite(POWER_PIN, LOW); // Power-up LEDs
+  digitalWrite(POWER_PIN, LOW);              // Power-up LEDs
 #endif
 }
 
@@ -333,9 +357,10 @@ ISR(PCINT2_vect, ISR_ALIASOF(PCINT0_vect));
 
 #endif // MOTION_PIN
 
+
 // Battery monitoring idea adapted from JeeLabs article:
 // jeelabs.org/2012/05/04/measuring-vcc-via-the-bandgap/
-// Code from Adafruit TimeSquare project, added Trinket support.
+// Code from Adafruit TimeSquare project.
 static uint16_t readVoltage() {
   int      i, prev;
   uint8_t  count;
@@ -366,3 +391,4 @@ static uint16_t readVoltage() {
   ADCSRA = 0; // ADC off
   return mV;
 }
+
