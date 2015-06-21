@@ -7,6 +7,15 @@
 # Ideal image dimensions are determined by hardware setup, e.g. LED poi
 # project uses 16 LEDs, so image height should match.  Width is limited
 # by AVR PROGMEM capacity -- very limited on Trinket!
+#
+# Adafruit invests time and resources providing this open source code,
+# please support Adafruit and open-source hardware by purchasing
+# products from Adafruit!
+#
+# Written by Phil Burgess / Paint Your Dragon for Adafruit Industries.
+# MIT license, all text above must be included in any redistribution.
+# See 'COPYING' file for additional notes.
+# --------------------------------------------------------------------------
 
 from PIL import Image
 import sys

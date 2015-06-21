@@ -1,18 +1,28 @@
-// POV LED poi sketch.  Uses the following Adafruit parts (X2 for two poi):
-//
-// - Trinket 5V or 3V (adafruit.com/product/1501 or 1500) (NOT Pro Trinket)
-// - 150 mAh LiPoly battery (#1317)
-// - LiPoly backpack (#2124)
-// - Fast (#1766) or medium (#2384) vibration sensor switch
-//
-// See comments in code re: vibration switch and other optional parts.
-//
-// Use 'soda bottle preform' for enclosure w/5.25" (133 mm) inside depth.
-// 3D-printable cap and insert can be downloaded from Thingiverse:
-// (add link here)
-// Add leash - e.g. paracord, or fancy ones available from flowtoys.com.
-//
-// Needs Adafruit_DotStar library: github.com/adafruit/Adafruit_DotStar
+/*------------------------------------------------------------------------
+  POV LED poi sketch.  Uses the following Adafruit parts (X2 for two poi):
+
+  - Trinket 5V or 3V (adafruit.com/product/1501 or 1500) (NOT Pro Trinket)
+  - 150 mAh LiPoly battery (#1317)
+  - LiPoly backpack (#2124)
+  - Fast (#1766) or medium (#2384) vibration sensor switch
+
+  See comments in code re: vibration switch and other optional parts.
+
+  Use 'soda bottle preform' for enclosure w/5.25" (133 mm) inside depth.
+  3D-printable cap and insert can be downloaded from Thingiverse:
+  (add link here)
+  Add leash - e.g. paracord, or fancy ones available from flowtoys.com.
+
+  Needs Adafruit_DotStar library: github.com/adafruit/Adafruit_DotStar
+
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit and open-source hardware by purchasing
+  products from Adafruit!
+
+  Written by Phil Burgess / Paint Your Dragon for Adafruit Industries.
+  MIT license, all text above must be included in any redistribution.
+  See 'COPYING' file for additional notes.
+  ------------------------------------------------------------------------*/
 
 #include <Arduino.h>
 #include <Adafruit_DotStar.h>
