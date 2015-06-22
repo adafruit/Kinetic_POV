@@ -25,14 +25,17 @@ Additional notes:
 Since we're asked pretty often: yes, you may use this code (as well as the
 Adafruit DotStar library) in your product / Kickstarter campaign / etc.
 provided the license terms are followed.  Please understand the "fitness"
-and "as-is" aspects -- that there is no obligation upon us to find or fix
-bugs, explain or document, add requested features, etc. before or after your
-product ships.
+and "as-is" aspects -- that your use of this code does not entitle a first-
+in-line response to bugs, explanations or documentation, feature requests,
+etc. before or after your product ships.
 
 We ask also that you not use the name "DotStar" (an Adafruit trademark) in
 your product name or campaign -- please use the generic name "APA102" when
-referring to the addressable LEDs.
+referring to the addressable LEDs.  Similarly, be mindful of Flowtoys'
+trademarks in this field (though not involved in this software, references
+to their components are made in the corresponding Adafruit Learning System
+guide).
 
 In short: include attribution/license in distributed code, test a lot, know
-enough C to resolve problems, stay clear of the (TM) and everything's cool.
+enough C to solve problems, stay clear of trademarks and everything's cool.
 Enjoy!  We look forward to seeing what you make of it!

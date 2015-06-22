@@ -40,8 +40,9 @@
 // be altered in RAM while running to provide additional colors, but be
 // mindful of peak & average current draw if you do that!  Power limiting
 // is normally done in convert.py (keeps this code relatively small & fast).
-// 1/4/8/24 were chosen because the AVR can handle these fairly easily;
-// unpacking data of arbitrary depth would go slower (no >>n instruction).
+// 1/4/8/24 were chosen because the AVR can handle these operations fairly
+// easily (have idea for handing arbitrary bit depth w/328P, but this margin
+// is too narrow to contain).
 
 // Ideally you use hardware SPI as it's much faster, though limited to
 // specific pins.  If you really need to bitbang DotStar data & clock on
@@ -184,6 +185,12 @@ void loop() {
 #endif
 
   // Transfer one scanline from pixel data to LED strip:
+
+  // If you're really pressed for graphics space and need just a few extra
+  // scanlines, and know for a fact you won't be using certain image modes,
+  // you can comment out the corresponding blocks below.  e.g. PALETTE8 and
+  // TRUECOLOR are somewhat impractical on Trinket, and commenting them out
+  // can free up nearly 200 bytes of extra image storage.
 
   switch(imageType) {
 
