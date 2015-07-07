@@ -4,9 +4,9 @@
   - Trinket 5V or 3V (adafruit.com/product/1501 or 1500) (NOT Pro Trinket)
   - 150 mAh LiPoly battery (#1317)
   - LiPoly backpack (#2124)
-  - Fast (#1766) or medium (#2384) vibration sensor switch
-
-  See comments in code re: vibration switch and other optional parts.
+  - Tiny SPDT slide switch (#805)
+  - 144 LED/m DotStar strip (#2328 or #2329) ONE is enough for four poi!
+  - Small tactile button (#1489) (optional) ONE is enough for 20 poi!
 
   Use 'soda bottle preform' for enclosure w/5.25" (133 mm) inside depth.
   3D-printable cap and insert can be downloaded from Thingiverse:
@@ -14,6 +14,13 @@
   Add leash - e.g. paracord, or fancy ones available from flowtoys.com.
 
   Needs Adafruit_DotStar library: github.com/adafruit/Adafruit_DotStar
+
+  The poi project is designed around the Trinket board specifically for
+  its small size (Pro Trinket won't fit).  Throughout the code you'll see
+  mentions of other boards and extra features -- future projects might
+  adapt this code for larger spinnythings like clubs or staves -- but
+  for the poi, no, there's just no space inside the soda bottle preform,
+  it's Trinket only and just with the most basic features.
 
   Adafruit invests time and resources providing this open source code,
   please support Adafruit and open-source hardware by purchasing
@@ -47,28 +54,27 @@
 // Ideally you use hardware SPI as it's much faster, though limited to
 // specific pins.  If you really need to bitbang DotStar data & clock on
 // different pins, optionally define those here:
-#define LED_DATA_PIN  0
-#define LED_CLOCK_PIN 1
+//#define LED_DATA_PIN  0
+//#define LED_CLOCK_PIN 1
 
-// The vibration switch (aligned perpendicular to leash) is used as a
-// poor man's accelerometer -- poi lights only when moving, saving some
-// power.  The 'fast' vibration switch is VERY sensitive and will trigger
-// at the slightest bump...while the 'medium' switch requires a certain
-// minimum spin rate which may not trigger if you're doing mellow spins.
-// Neither is perfect.  If you'd prefer just to leave out that component
-// and have the poi run always-on, comment out this line:
-#define MOTION_PIN 2
+// Select from multiple images using tactile button (#1489) between pin and
+// ground.  Requires suitably-built graphics.h file w/more than one image.
+#define SELECT_PIN 3
 
-// Optional: select from multiple images using tactile button (#1489)
-// between pin and ground.  Requires a suitably-built graphics.h file with
-// more than one image.
-//#define SELECT_PIN 3
+// Optional feature -- not enabled here, no space -- a vibration switch
+// (aligned perpendicular to leash) is used as a poor man's accelerometer.
+// Poi then lights only when moving, saving some power.  The 'fast'
+// vibration switch is VERY sensitive and will trigger at the slightest
+// bump, while the 'medium' switch requires a certain spin rate which may
+// not trigger if you're doing mellow spins.  Neither is perfect.  To leave
+// that out and simply have the poi run always-on, comment out this line:
+//#define MOTION_PIN 2
 
-// Experimental: powering down DotStars when idle conserves more battery,
-// but space is very tight and this requires creative free-wiring.  Use a
-// PNP transistor (e.g. 2N2907) (w/220 Ohm resistor to base) as a 'high
-// side' switch to DotStar +V.  DON'T do this NPN/low-side, may damage
-// strip.  MOTION_PIN must also be defined to use this (pointless without).
+// Another optional feature not enable due to physical size -- powering down
+// DotStars when idle conserves more battery.  Use a PNP transistor (e.g.
+// 2N2907) (w/220 Ohm resistor to base) as a 'high side' switch to DotStar
+// +V.  DON'T do this NPN/low-side, may damage strip.  MOTION_PIN must also
+// be defined to use this (pointless without).
 //#define POWER_PIN 4
 
 #define SLEEP_TIME 2000  // Not-spinning time before sleep, in milliseconds
@@ -84,6 +90,12 @@ Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS,
   LED_DATA_PIN, LED_CLOCK_PIN, DOTSTAR_GBR);
 #else
 Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS, DOTSTAR_GBR);
+#endif
+
+void     imageInit(void);
+uint16_t readVoltage(void);
+#ifdef MOTION_PIN
+void     sleep(void);
 #endif
 
 void setup() {
@@ -174,8 +186,6 @@ void loop() {
     debounce = 0;                      // Not pressed -- reset counter
   } else {                             // Pressed...
     if(debounce++ >= 25) {             // Debounce input
-      // If you don't have a select button, these two lines could be
-      // put in the sleep() function to change images on each wake:
       if(++imageNumber >= NUM_IMAGES) imageNumber = 0;
       imageInit();                     // Switch to next image
       while(!digitalRead(SELECT_PIN)); // Wait for release
@@ -360,7 +370,7 @@ ISR(PCINT2_vect, ISR_ALIASOF(PCINT0_vect));
 // Battery monitoring idea adapted from JeeLabs article:
 // jeelabs.org/2012/05/04/measuring-vcc-via-the-bandgap/
 // Code from Adafruit TimeSquare project, added Trinket support.
-static uint16_t readVoltage() {
+uint16_t readVoltage() {
   int      i, prev;
   uint8_t  count;
   uint16_t mV;
