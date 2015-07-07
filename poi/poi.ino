@@ -233,6 +233,7 @@ void loop() {
       break;
     }
 
+#if 0 // Yep, demo images need ALL THE SPACE (see comment above)
     case PALETTE8: { // 8-bit (256 color) PROGMEM-palette-based image
       uint16_t  o;
       uint8_t   pixelNum,
@@ -258,6 +259,7 @@ void loop() {
       }
       break;
     }
+#endif
   }
 
   strip.show(); // Refresh LEDs

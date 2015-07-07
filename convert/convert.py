@@ -69,6 +69,7 @@ images  = []
 
 for name in sys.argv[1:]: # For each image passed to script...
 	image        = Image.open(name)
+	image.name   = name
 	image.pixels = image.load()
 	image.height = image.size[1] # May get byte-padded below
 	try:    image.numColors = len(image.getcolors(256))
@@ -101,6 +102,8 @@ print
 # Second pass estimates current of each column, then peak & overall average
 
 for imgNum, image in enumerate(images): # For each image in list...
+	sys.stdout.write("// %s%s\n\n" % (image.name,
+	  ' '.ljust(73 - len(image.name),'-')))
 	if image.numColors <= 256:
 		# Shenanigans to extract color palette from image:
 		lut = image.resize((image.numColors, 1))
