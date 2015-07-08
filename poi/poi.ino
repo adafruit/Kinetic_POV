@@ -1,7 +1,7 @@
 /*------------------------------------------------------------------------
   POV LED poi sketch.  Uses the following Adafruit parts (X2 for two poi):
 
-  - Trinket 5V or 3V (adafruit.com/product/1501 or 1500) (NOT Pro Trinket)
+  - Trinket 5V (adafruit.com/product/1501) (NOT Pro Trinket or 3V Trinket)
   - 150 mAh LiPoly battery (#1317)
   - LiPoly backpack (#2124)
   - Tiny SPDT slide switch (#805)
@@ -81,7 +81,7 @@
 
 // Empty and full thresholds (millivolts) used for battery level display:
 #define BATT_MIN_MV 3350 // Some headroom over battery cutoff near 2.9V
-#define BATT_MAX_MV 4050 // And little below fresh-charged battery near 4.1V
+#define BATT_MAX_MV 4000 // And little below fresh-charged battery near 4.1V
 
 // -------------------------------------------------------------------------
 
@@ -372,6 +372,8 @@ ISR(PCINT2_vect, ISR_ALIASOF(PCINT0_vect));
 // Battery monitoring idea adapted from JeeLabs article:
 // jeelabs.org/2012/05/04/measuring-vcc-via-the-bandgap/
 // Code from Adafruit TimeSquare project, added Trinket support.
+// In a pinch, the poi code can work on a 3V Trinket, but the battery
+// monitor will not work correctly (due to the 3.3V regulator).
 uint16_t readVoltage() {
   int      i, prev;
   uint8_t  count;
