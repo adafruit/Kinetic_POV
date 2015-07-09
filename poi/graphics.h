@@ -316,7 +316,7 @@ const uint8_t PROGMEM pixels06[] = {
 
 typedef struct {
   uint8_t        type;    // PALETTE[1,4,8] or TRUECOLOR
-  uint16_t       lines;   // Length of image (in scanlines)
+  line_t         lines;   // Length of image (in scanlines)
   const uint8_t *palette; // -> PROGMEM color table (NULL if truecolor)
   const uint8_t *pixels;  // -> Pixel data in PROGMEM
 } image;
