@@ -10,7 +10,7 @@
 
   Use 'soda bottle preform' for enclosure w/5.25" (133 mm) inside depth.
   3D-printable cap and insert can be downloaded from Thingiverse:
-  (add link here)
+  http://www.thingiverse.com/thing:918847
   Add leash - e.g. paracord, or fancy ones available from flowtoys.com.
 
   Needs Adafruit_DotStar library: github.com/adafruit/Adafruit_DotStar
