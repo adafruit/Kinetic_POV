@@ -72,8 +72,36 @@ for name in sys.argv[1:]: # For each image passed to script...
 	image.name   = name
 	image.pixels = image.load()
 	image.height = image.size[1] # May get byte-padded below
-	try:    image.numColors = len(image.getcolors(256))
-	except: image.numColors = 257
+	try:
+		# Determine if image is truecolor vs. colormapped.
+		# This next line throws an exception if truecolor.
+		image.colors = image.getcolors(256)
+		# image.colors is an unsorted list of tuples where each
+		# item is a pixel count and a color palette index.
+		# Unused palette indices (0 pixels) are not in list,
+		# so its length tells us the unique color count...
+		image.numColors = len(image.colors)
+		# The image & palette aren't necessarily optimally packed,
+		# e.g. might have a 216-color 'web safe' palette but only
+		# use a handful of colors.  In order to reduce the palette
+		# storage requirements, only the colors in use will be
+		# output.  The pixel indices in the image must be remapped
+		# to this new palette sequence...
+		remap = [0] * 256
+		for c in range(image.numColors): # For each color used...
+			# The original color index (image.colors[c][1])
+			# is reassigned to a sequential 'packed' index (c):
+			remap[image.colors[c][1]] = c
+		# Every pixel in image is then remapped through this table:
+		for y in range(image.size[1]):
+			for x in range(image.size[0]):
+				image.pixels[x, y] = remap[image.pixels[x, y]]
+		# The color palette associated with the image is still in
+		# its unpacked/unoptimal order; image pixel values no longer
+		# point to correct entries.  This is OK and we'll compensate
+		# for it later in the code.
+	except:                       # if getcolors(256) fails,
+		image.numColors = 257 # ...image is truecolor
 	images.append(image)
 
 	# 1- and 4-bit images are padded to the next byte boundary.
@@ -105,9 +133,21 @@ for imgNum, image in enumerate(images): # For each image in list...
 	sys.stdout.write("// %s%s\n\n" % (image.name,
 	  ' '.ljust(73 - len(image.name),'-')))
 	if image.numColors <= 256:
-		# Shenanigans to extract color palette from image:
+		# Extracting the current color palette from the image
+		# requires some weird shenanigans...first, make a duplicate
+		# image where width=image.numColors and height=1.  This will
+		# have the same color palette as the original image, which
+		# may contain many unused entries.
 		lut = image.resize((image.numColors, 1))
-		lut.putdata(range(image.numColors))
+		lut.pixels = lut.load()
+		# The image.colors[] list contains the original palette
+		# indices of the colors actually in use.  Draw one pixel
+		# into the 'lut' image for each color index in use, in the
+		# order they appear in the color list...
+		for x in range(image.numColors):
+			lut.pixels[x, 0] = image.colors[x][1]
+		# ...then convert the lut image to RGB format to provide a
+		# list of (R,G,B) values representing the packed color list.
 		lut = list(lut.convert("RGB").getdata())
 
 		# Estimate current for each element of palette:
@@ -148,9 +188,8 @@ for imgNum, image in enumerate(images): # For each image in list...
 	bG1 = bG * s1
 	bB1 = bB * s1
 
-	p    = 0 # Current pixel number in image
-
-	cols     = 7 # Forcw wrap on 1st output
+	p        = 0 # Current pixel number in image
+	cols     = 7 # Force wrap on 1st output
 	byteNum  = 0
 
 	if image.numColors <= 256:
@@ -234,7 +273,7 @@ for imgNum, image in enumerate(images): # For each image in list...
 
 print "typedef struct {"
 print "  uint8_t        type;    // PALETTE[1,4,8] or TRUECOLOR"
-print "  uint16_t       lines;   // Length of image (in scanlines)"
+print "  line_t         lines;   // Length of image (in scanlines)"
 print "  const uint8_t *palette; // -> PROGMEM color table (NULL if truecolor)"
 print "  const uint8_t *pixels;  // -> Pixel data in PROGMEM"
 print "} image;"
