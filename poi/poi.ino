@@ -96,7 +96,7 @@ boolean autoCycle = false; // Set to true to cycle images by default
 
 #if defined(LED_DATA_PIN) && defined(LED_CLOCK_PIN)
 Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS,
-  LED_DATA_PIN, LED_CLOCK_PIN, DOTSTAR_GBR);
+  LED_DATA_PIN, LED_CLOCK_PIN, DOTSTAR_BRG);
 #else
 Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS, DOTSTAR_GBR);
 #endif
