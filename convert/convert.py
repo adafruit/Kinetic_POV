@@ -112,7 +112,7 @@ for name in sys.argv[1:]: # For each image passed to script...
 	if image.numColors <= 2:    # 1 bit/pixel, use 8-pixel blocks
 		if image.height & 7: image.height += 8 - (image.height & 7)
 	elif image.numColors <= 16: # 4 bits/pixel, use 2-pixel blocks
-		if image.height & 2: image.height += 1
+		if image.height & 1: image.height += 1
 
 	if image.height > numLEDs: numLEDs = image.height
 
@@ -211,8 +211,10 @@ for imgNum, image in enumerate(images): # For each image in list...
 			numBytes = image.size[0] * numLEDs / 8
 		elif image.numColors <= 16:
 			numBytes = image.size[0] * numLEDs / 2
-		else:
+		elif image.numColors <= 256:
 			numBytes = image.size[0] * numLEDs
+		else:
+			numBytes = image.size[0] * numLEDs * 3
 
 		for x in range(image.size[0]):
 			if image.numColors <= 2:
@@ -236,11 +238,21 @@ for imgNum, image in enumerate(images): # For each image in list...
 					else:
 						p2 = 0
 					writeByte(p1 * 16 + p2)
-			else:
+			elif image.numColors <= 256:
 				for y in range(numLEDs):
 					if y < image.size[1]:
 						writeByte(image.pixels[x, y])
 					else:
+						writeByte(0)
+			else:
+				for y in range(numLEDs):
+					if y < image.size[1]:
+						writeByte(image.pixels[x, y][0])
+						writeByte(image.pixels[x, y][1])
+						writeByte(image.pixels[x, y][2])
+					else:
+						writeByte(0)
+						writeByte(0)
 						writeByte(0)
 
 	else:
