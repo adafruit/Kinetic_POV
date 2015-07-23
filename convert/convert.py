@@ -71,7 +71,7 @@ for name in sys.argv[1:]: # For each image passed to script...
 	image        = Image.open(name)
 	image.name   = name
 	image.pixels = image.load()
-	image.height = image.size[1] # May get byte-padded below
+	image.bph    = image.size[1] # Byte-padded height (tweaked below)
 	try:
 		# Determine if image is truecolor vs. colormapped.
 		# This next line throws an exception if truecolor.
@@ -110,11 +110,11 @@ for name in sys.argv[1:]: # For each image passed to script...
 	# small for the LED strip, just wastes some PROGMEM space or some
 	# LEDs will be lit wrong, usually no biggie.
 	if image.numColors <= 2:    # 1 bit/pixel, use 8-pixel blocks
-		if image.height & 7: image.height += 8 - (image.height & 7)
+		if image.bph & 7: image.bph += 8 - (image.bph & 7)
 	elif image.numColors <= 16: # 4 bits/pixel, use 2-pixel blocks
-		if image.height & 1: image.height += 1
+		if image.bph & 1: image.bph += 1
 
-	if image.height > numLEDs: numLEDs = image.height
+	if image.bph > numLEDs: numLEDs = image.bph
 
 print "// Don't edit this file!  It's software-generated."
 print "// See convert.py script instead."
@@ -259,7 +259,7 @@ for imgNum, image in enumerate(images): # For each image in list...
 		# Perform gamma- and brightness-adjustment on pixel data
 		sys.stdout.write(
 		  "const uint8_t PROGMEM pixels%02d[] = {" % imgNum)
-		numBytes = image.size[0] * image.height * 3
+		numBytes = image.size[0] * numLEDs * 3
 
 		for x in range(image.size[0]):
 			for y in range(numLEDs):
