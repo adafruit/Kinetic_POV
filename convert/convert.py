@@ -69,13 +69,22 @@ images  = []
 
 for name in sys.argv[1:]: # For each image passed to script...
 	image        = Image.open(name)
-	image.name   = name
 	image.pixels = image.load()
-	image.bph    = image.size[1] # Byte-padded height (tweaked below)
 	try:
 		# Determine if image is truecolor vs. colormapped.
-		# This next line throws an exception if truecolor.
+		# This next line throws an exception if > 256 colors:
 		image.colors = image.getcolors(256)
+		# However, in the no-exception case (256 colors or less),
+		# that doesn't necessarily mean it's a non-truecolor image
+		# yet, just that it has few colors.  Check the image type
+		# and if it's truecolor or similar, convert the image to
+		# a paletted mode so it can be more efficiently stored.
+		# Since there are few colors, this operation is lossless.
+		if (image.mode != '1' and image.mode != 'L' and
+		  image.mode != 'P'):
+			image = image.convert("P", palette="ADAPTIVE")
+			image.pixels = image.load()
+			image.colors = image.getcolors(256)
 		# image.colors is an unsorted list of tuples where each
 		# item is a pixel count and a color palette index.
 		# Unused palette indices (0 pixels) are not in list,
@@ -102,6 +111,8 @@ for name in sys.argv[1:]: # For each image passed to script...
 		# for it later in the code.
 	except:                       # if getcolors(256) fails,
 		image.numColors = 257 # ...image is truecolor
+	image.name = name
+	image.bph  = image.size[1] # Byte-padded height (tweaked below)
 	images.append(image)
 
 	# 1- and 4-bit images are padded to the next byte boundary.
@@ -133,11 +144,10 @@ for imgNum, image in enumerate(images): # For each image in list...
 	sys.stdout.write("// %s%s\n\n" % (image.name,
 	  ' '.ljust(73 - len(image.name),'-')))
 	if image.numColors <= 256:
-		# Extracting the current color palette from the image
-		# requires some weird shenanigans...first, make a duplicate
-		# image where width=image.numColors and height=1.  This will
-		# have the same color palette as the original image, which
-		# may contain many unused entries.
+		# Palette optimization requires some weird shenanigans...
+		# first, make a duplicate image where width=image.numColors
+		# and height=1.  This will have the same color palette as
+		# the original image, which may contain many unused entries.
 		lut = image.resize((image.numColors, 1))
 		lut.pixels = lut.load()
 		# The image.colors[] list contains the original palette
