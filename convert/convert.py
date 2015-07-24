@@ -21,12 +21,22 @@ from PIL import Image
 import sys
 
 # Establish peak and average current limits - a function of battery
-# capacity and desired run time.  LED poi project uses a 150 mAh cell,
-# so average current should be kept at or below 1C rate (150 mA), though
-# brief surges are OK.  Project uses two LED strips in parallel, so actual
-# current is 2X these numbers, plus some overhead (~20 mA) for the MCU.
-peakC = 180.0     # 180 + 180 + 20 = 380 mA = ~2.5C peak
-avgC  =  60.0     #  60 +  60 + 20 = 140 mA = ~0.9C average
+# capacity and desired run time.
+
+# These you can edit to match your build:
+batterySize    = 150  # Battery capacity, in milliamp-hours (mAh)
+runTime        = 1.1  # Est. max run time, in hours (longer = dimmer LEDs)
+parallelStrips = 2    # Same data is issued to this many LED strips
+
+# These probably don't need editing:
+mcuCurrent     = 20   # Est. current used by microcontrolled board (mA)
+wireLimit      = 1500 # Ampacity of battery wires (est 26 gauge) (milliamps)
+
+# Estimate average and peak LED currents, within some safety thresholds:
+if(runTime < 1.0): runTime = 1.0       # Don't exceed 1C rate from battery
+avgC  = (batterySize - mcuCurrent) / runTime / parallelStrips
+if(avgC > wireLimit): avgC = wireLimit # Don't exceed battery wire ampacity
+peakC = avgC * 2.2                     # Battery+wires OK w/brief peaks
 
 bR    = 1.0       # Can adjust
 bG    = 1.0       # color balance
