@@ -33,10 +33,12 @@ mcuCurrent     = 20   # Est. current used by microcontrolled board (mA)
 wireLimit      = 1500 # Ampacity of battery wires (est 26 gauge) (milliamps)
 
 # Estimate average and peak LED currents, within some safety thresholds:
-if(runTime < 1.0): runTime = 1.0       # Don't exceed 1C rate from battery
-avgC  = (batterySize - mcuCurrent) / runTime / parallelStrips
-if(avgC > wireLimit): avgC = wireLimit # Don't exceed battery wire ampacity
-peakC = avgC * 2.2                     # Battery+wires OK w/brief peaks
+if(runTime < 1.0): runTime = 1.0        # Don't exceed 1C rate from battery
+cl = batterySize - mcuCurrent * runTime # After MCU, charge left for LEDs
+if cl < 0: cl = 0                       # Must be non-negative
+avgC = cl / runTime / parallelStrips
+if avgC > wireLimit: avgC = wireLimit   # Don't exceed battery wire ampacity
+peakC = avgC * 2.2                      # Battery+wires OK w/brief peaks
 
 bR    = 1.0       # Can adjust
 bG    = 1.0       # color balance

@@ -98,7 +98,7 @@ boolean autoCycle = false; // Set to true to cycle images by default
 Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS,
   LED_DATA_PIN, LED_CLOCK_PIN, DOTSTAR_BRG);
 #else
-Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS, DOTSTAR_GBR);
+Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS, DOTSTAR_BRG);
 #endif
 
 void     imageInit(void);
@@ -270,21 +270,21 @@ void loop() {
       for(pixelNum = 0; pixelNum < NUM_LEDS; pixelNum++) {
         o = pgm_read_byte(ptr++) * 3; // Offset into imagePalette
         strip.setPixelColor(pixelNum,
-          pgm_read_byte(&imagePalette[o++]),
-          pgm_read_byte(&imagePalette[o++]),
-          pgm_read_byte(&imagePalette[o]));
+          pgm_read_byte(&imagePalette[o]),
+          pgm_read_byte(&imagePalette[o + 1]),
+          pgm_read_byte(&imagePalette[o + 2]));
       }
       break;
     }
 
     case TRUECOLOR: { // 24-bit ('truecolor') image (no palette)
-      uint8_t  pixelNum,
+      uint8_t  pixelNum, r, g, b,
               *ptr = (uint8_t *)&imagePixels[imageLine * NUM_LEDS * 3];
       for(pixelNum = 0; pixelNum < NUM_LEDS; pixelNum++) {
-        strip.setPixelColor(pixelNum,
-          pgm_read_byte(ptr++),
-          pgm_read_byte(ptr++),
-          pgm_read_byte(ptr++));
+        r = pgm_read_byte(ptr++);
+        g = pgm_read_byte(ptr++);
+        b = pgm_read_byte(ptr++);
+        strip.setPixelColor(pixelNum, r, g, b);
       }
       break;
     }
