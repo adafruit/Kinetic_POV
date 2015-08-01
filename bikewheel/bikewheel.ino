@@ -92,10 +92,11 @@ boolean autoCycle = true; // Set to true to cycle images by default
 // -------------------------------------------------------------------------
 
 #if defined(LED_DATA_PIN) && defined(LED_CLOCK_PIN)
+// Older DotStar LEDs use GBR order.  If colors are wrong, edit here.
 Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS,
   LED_DATA_PIN, LED_CLOCK_PIN, DOTSTAR_BRG);
 #else
-Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS, DOTSTAR_BGR); // Some older DotStars are GBR
+Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS, DOTSTAR_BGR);
 #endif
 
 void     imageInit(void);
