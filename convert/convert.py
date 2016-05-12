@@ -82,16 +82,17 @@ images  = []
 for name in sys.argv[1:]: # For each image passed to script...
 	image        = Image.open(name)
 	image.pixels = image.load()
-	try:
-		# Determine if image is truecolor vs. colormapped.
-		# This next line throws an exception if > 256 colors:
-		image.colors = image.getcolors(256)
-		# However, in the no-exception case (256 colors or less),
-		# that doesn't necessarily mean it's a non-truecolor image
-		# yet, just that it has few colors.  Check the image type
-		# and if it's truecolor or similar, convert the image to
-		# a paletted mode so it can be more efficiently stored.
-		# Since there are few colors, this operation is lossless.
+	# Determine if image is truecolor vs. colormapped.
+	image.colors = image.getcolors(256)
+	if image.colors == None:
+		image.numColors = 257 # Image is truecolor
+	else:
+		# If 256 colors or less, that doesn't necessarily mean
+		# it's a non-truecolor image yet, just that it has few
+		# colors.  Check the image type and if it's truecolor or
+		# similar, convert the image to a paletted mode so it can
+		# be more efficiently stored.  Since there are few colors,
+		# this operation is lossless.
 		if (image.mode != '1' and image.mode != 'L' and
 		  image.mode != 'P'):
 			image = image.convert("P", palette="ADAPTIVE")
@@ -121,8 +122,6 @@ for name in sys.argv[1:]: # For each image passed to script...
 		# its unpacked/unoptimal order; image pixel values no longer
 		# point to correct entries.  This is OK and we'll compensate
 		# for it later in the code.
-	except:                       # if getcolors(256) fails,
-		image.numColors = 257 # ...image is truecolor
 	image.name = name
 	image.bph  = image.size[1] # Byte-padded height (tweaked below)
 	images.append(image)
